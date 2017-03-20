@@ -15,9 +15,10 @@ class Dataset(object):
 
     def __init__(self, speech_energy='P.56'):
         self.speech = list()
-        self.noise = dict()
-        self.reverb = dict()
+        self.noise = {}
+        self.reverb = {None: None}
         self.speech_energy = speech_energy
+        self.rootdir = None
 
 
     def add_speech_files(self, path, recursive=False):
@@ -33,6 +34,7 @@ class Dataset(object):
             else:
                 files = glob(os.path.join(path, '*.wav')) + glob(os.path.join(path, '*.WAV'))
             self.speech.extend(files)
+            self.rootdir = path
         else:
             raise ValueError('Path needs to point to an existing file/folder')
 
@@ -110,8 +112,14 @@ class Dataset(object):
                         raise ValueError('Speech file and reverb file have different fs!')
                     x = add_reverb(x, r, fs, speech_energy=self.speech_energy)
                 y = add_noise(x, n, fs, snr, speech_energy=self.speech_energy)[0]
-                wavwrite(os.path.join(output_dir, '{}_{}dB'.format(condition_name, snr),
-                    os.path.basename(f)), y, fs)
+                out_folder_name ='{}_{}dB'.format(condition_name, snr)
+
+                subdirs = f[f.find(self.rootdir)+len(self.rootdir):]
+                out_path = os.path.join(output_dir, out_folder_name, subdirs)
+                out_dir_path = os.path.dirname(out_path)
+                if not os.path.isdir(out_dir_path):
+                    os.makedirs(out_dir_path, exist_ok=True)
+                wavwrite(out_path, y, fs)
 
 
     def generate_dataset(self, snrs, output_dir, files_per_condition=None):
